@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StoryWeaver — Ilustrador de Histórias</title>
+<meta name="description" content="Escreva uma ideia e gere um miniconto ilustrado, cena por cena." />
+<style>
+  :root{
+    --paper:#f4f1ea;
+    --ink:#23201b;
+    --muted:#6f6a60;
+    --line:#d8d2c4;
+    --card:#fffdf8;
+    --accent:#b4452f;
+    --accent-ink:#fff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Georgia,'Times New Roman',serif;
+    color:var(--ink);
+    background:var(--paper);
+    line-height:1.55;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
+  header h1{font-size:2.4rem;margin:0;letter-spacing:-.5px}
+  header p{margin:6px 0 0;color:var(--muted);font-style:italic}
+
+  .authbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 14px;margin-bottom:32px;font-size:.9rem}
+  .authbar .state{color:var(--muted)}
+  .authbar .state b{color:var(--ink)}
+  .authbar button{font-family:inherit;font-size:.88rem;padding:7px 14px;background:var(--accent);color:var(--accent-ink);
+    border:none;border-radius:4px;cursor:pointer}
+  .authbar button.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
+  .authbar button:hover{filter:brightness(1.05)}
+
+  .panel{margin-bottom:36px}
+  label{display:block;font-weight:bold;margin-bottom:6px;font-size:.95rem}
+  textarea{
+    width:100%;min-height:84px;padding:12px 14px;font-size:1.05rem;
+    font-family:inherit;color:var(--ink);background:var(--card);
+    border:1px solid var(--line);border-radius:4px;resize:vertical;outline:none;
+  }
+  textarea:focus{border-color:var(--accent)}
+
+  .suggest{margin:10px 0 0;font-size:.9rem;color:var(--muted)}
+  .suggest a{color:var(--accent);cursor:pointer;text-decoration:underline;text-decoration-style:dotted}
+
+  .row{display:flex;gap:18px;flex-wrap:wrap;margin-top:20px}
+  .field{flex:1;min-width:180px}
+  select{
+    width:100%;padding:10px 12px;font-size:1rem;font-family:inherit;color:var(--ink);
+    background:var(--card);border:1px solid var(--line);border-radius:4px;outline:none;cursor:pointer;
+  }
+  select:focus{border-color:var(--accent)}
+
+  button.go{
+    margin-top:24px;padding:13px 28px;font-size:1.05rem;font-family:inherit;font-weight:bold;
+    color:var(--accent-ink);background:var(--accent);border:none;border-radius:4px;cursor:pointer;
+  }
+  button.go:hover{background:#9c3a27}
+  button.go:disabled{opacity:.5;cursor:not-allowed}
+
+  .status{min-height:22px;margin:0 0 24px;color:var(--muted);font-style:italic}
+
+  .story{display:flex;flex-direction:column;gap:40px}
+  .scene{border-top:1px solid var(--line);padding-top:28px}
+  .scene:first-child{border-top:none;padding-top:0}
+  .scene .num{display:block;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .imgwrap{position:relative;background:var(--card);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .scene img{width:100%;display:block;aspect-ratio:3/2;object-fit:cover}
+  .loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-style:italic;font-size:.95rem}
+  .scene p{font-size:1.18rem;margin:18px 0 0}
+
+  .toolbar{display:flex;gap:14px;margin-top:40px;border-top:2px solid var(--ink);padding-top:20px}
+  .toolbar button{font-family:inherit;font-size:.95rem;padding:9px 18px;background:none;color:var(--ink);border:1px solid var(--ink);border-radius:4px;cursor:pointer}
+  .toolbar button:hover{background:var(--ink);color:var(--paper)}
+
+  footer{margin-top:48px;padding:24px;border-radius:6px;background:var(--ink);color:#cdc6b8;text-align:center}
+  footer img.logo{height:24px;vertical-align:middle}
+  footer .badge{display:inline-block;margin:14px 0 6px}
+  footer p{margin:8px 0 0;font-size:.85rem}
+  footer a{color:#e8c9b0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>StoryWeaver</h1>
+    <p>Uma ideia vira um miniconto ilustrado, cena por cena.</p>
+  </header>
+
+  <div class="authbar">
+    <span class="state" id="authstate"></span>
+    <button id="authbtn"></button>
+  </div>
+
+  <div class="panel">
+    <label for="idea">Sua ideia</label>
+    <textarea id="idea" placeholder="Ex.: um robô solitário que encontra uma flor brilhante na floresta"></textarea>
+    <p class="suggest" id="suggest">Sem inspiração? </p>
+
+    <div class="row">
+      <div class="field">
+        <label for="style">Estilo da arte</label>
+        <select id="style">
+          <option value="children's book watercolor illustration, soft colors">Aquarela (livro infantil)</option>
+          <option value="vibrant anime style, cinematic lighting">Anime</option>
+          <option value="pixel art, 16-bit, colorful">Pixel art</option>
+          <option value="3d pixar style render, cute">3D</option>
+          <option value="dark fantasy digital painting, dramatic">Fantasia sombria</option>
+          <option value="comic book ink, bold outlines">Quadrinhos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="len">Número de cenas</label>
+        <select id="len">
+          <option value="3">3 cenas</option>
+          <option value="4" selected>4 cenas</option>
+          <option value="5">5 cenas</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="go" id="go">Tecer história</button>
+  </div>
+
+  <p class="status" id="status"></p>
+  <div class="story" id="story"></div>
+
+  <div class="toolbar" id="toolbar" style="display:none">
+    <button id="again">Nova história</button>
+    <button id="print">Salvar / Imprimir</button>
+  </div>
+
+  <footer>
+    <a href="https://pollinations.ai" target="_blank" rel="noopener">
+      <img class="logo" src="https://raw.githubusercontent.com/pollinations/pollinations/main/assets/logo-text.svg" alt="pollinations.ai" />
+    </a>
+    <div class="badge">
+      <a href="https://pollinations.ai" target="_blank" rel="noopener">
+        <img src="https://img.shields.io/badge/Built%20with-Pollinations-8a2be2?style=for-the-badge&logoColor=white&labelColor=6a0dad" alt="Built with pollinations.ai" />
+      </a>
+    </div>
+    <p>Texto e imagens gerados pela <a href="https://pollinations.ai" target="_blank" rel="noopener">pollinations.ai</a>.</p>
+  </footer>
+</div>
+
+<script>
+  const APP_REFERRER = "carvalholuciano.github.io";
+  const APP_PUBLISHABLE_KEY = "pk_laMQuIs0HS4ahHyH";
+  // Precisa ser idêntico a uma Redirect URI cadastrada na App Key (enter.pollinations.ai).
+  // Deixe "" para usar a URL atual da página automaticamente.
+  const REDIRECT_URI = "https://carvalholuciano.github.io/storyweaver/";
+  const TEXT_MODEL = "openai";
+  const IMG_MODEL  = "flux";
+  const GEN = "https://gen.pollinations.ai";
+  const AUTH = "https://enter.pollinations.ai/authorize";
+
+  let userKey = null;
+  try { userKey = sessionStorage.getItem('pollinations_key'); } catch(e){}
+
+  const ideaEl = document.getElementById('idea');
+  const styleEl = document.getElementById('style');
+  const lenEl = document.getElementById('len');
+  const goBtn = document.getElementById('go');
+  const statusEl = document.getElementById('status');
+  const storyEl = document.getElementById('story');
+  const toolbar = document.getElementById('toolbar');
+  const authStateEl = document.getElementById('authstate');
+  const authBtn = document.getElementById('authbtn');
+
+  (function handleRedirect(){
+    if(!location.hash) return;
+    const h = new URLSearchParams(location.hash.slice(1));
+    const key = h.get('api_key');
+    if(key){
+      userKey = key;
+      try { sessionStorage.setItem('pollinations_key', key); } catch(e){}
+    } else if(h.get('error')){
+      statusEl.textContent = 'Autorização cancelada.';
+    }
+    history.replaceState(null, '', location.pathname + location.search);
+  })();
+
+  function renderAuth(){
+    if(userKey){
+      authStateEl.innerHTML = '<b>Conectado</b> — usando seu saldo Pollinations.';
+      authBtn.textContent = 'Desconectar';
+      authBtn.className = 'ghost';
+    } else {
+      authStateEl.innerHTML = 'Modo anônimo (limites baixos). Conecte sua conta para gerar sem fila.';
+      authBtn.textContent = 'Conectar Pollinations';
+      authBtn.className = '';
+    }
+  }
+  renderAuth();
+
+  authBtn.addEventListener('click', ()=>{
+    if(userKey){
+      userKey = null;
+      try { sessionStorage.removeItem('pollinations_key'); } catch(e){}
+      renderAuth();
+      return;
+    }
+    const params = new URLSearchParams({
+      redirect_uri: REDIRECT_URI || (location.origin + location.pathname),
+      scope: 'usage',
+      models: IMG_MODEL + ',' + TEXT_MODEL
+    });
+    if(APP_PUBLISHABLE_KEY) params.set('client_id', APP_PUBLISHABLE_KEY);
+    window.location.href = AUTH + '?' + params.toString();
+  });
+
+  const ideas = [
+    "um robô solitário que encontra uma flor brilhante na floresta",
+    "uma raposa que rouba a lua e precisa devolvê-la",
+    "uma menina que descobre uma porta secreta dentro de um livro",
+    "um dragão tímido que tem medo de fogo",
+    "um farol que sonha em viajar pelo mar"
+  ];
+  const suggestEl = document.getElementById('suggest');
+  ideas.forEach((t,i)=>{
+    const a=document.createElement('a');
+    a.textContent = t.split(' ').slice(0,3).join(' ')+'…';
+    a.title=t;
+    a.onclick=()=>{ideaEl.value=t;};
+    suggestEl.appendChild(a);
+    if(i<ideas.length-1) suggestEl.appendChild(document.createTextNode(' · '));
+  });
+
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+  async function fetchWithRetry(url, options={}, tries=5){
+    for(let attempt=0; attempt<tries; attempt++){
+      const res = await fetch(url, options);
+      if(res.ok) return res;
+      if(res.status===429 && attempt<tries-1){
+        const wait = 3000*(attempt+1);
+        statusEl.textContent='Fila cheia no servidor, tentando de novo em '+(wait/1000)+'s…';
+        await sleep(wait);
+        continue;
+      }
+      throw new Error('Falha na requisição ('+res.status+')');
+    }
+  }
+
+  function storyPrompt(idea, scenes){
+    return `Escreva um miniconto criativo e encantador em português sobre: "${idea}". `
+      + `Divida em exatamente ${scenes} parágrafos curtos (2 a 3 frases cada). `
+      + `Cada parágrafo é uma cena visual distinta. `
+      + `Responda APENAS com os parágrafos, separados por uma linha em branco, sem títulos, sem números.`;
+  }
+
+  function splitParagraphs(text, scenes){
+    let parts = text.split(/\n\s*\n/).map(s=>s.replace(/^\s*\d+[\.\)]\s*/,'').trim()).filter(Boolean);
+    if(parts.length < 2) parts = text.split(/\n/).map(s=>s.trim()).filter(Boolean);
+    return parts.slice(0, scenes);
+  }
+
+  async function getStory(idea, scenes){
+    const prompt = storyPrompt(idea, scenes);
+    if(userKey){
+      const res = await fetchWithRetry(GEN + '/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + userKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: TEXT_MODEL, messages: [{ role: 'user', content: prompt }] })
+      });
+      const data = await res.json();
+      const text = (data.choices && data.choices[0] && data.choices[0].message.content) || '';
+      return splitParagraphs(text, scenes);
+    }
+    const url = 'https://text.pollinations.ai/' + encodeURIComponent(prompt)
+              + '?model=' + TEXT_MODEL + '&referrer=' + APP_REFERRER;
+    const res = await fetchWithRetry(url);
+    return splitParagraphs(await res.text(), scenes);
+  }
+
+  async function makeImageSrc(prompt){
+    const seed = Math.floor(Math.random()*1e6);
+    const qs = 'width=900&height=600&model=' + IMG_MODEL + '&nologo=true&seed=' + seed;
+    if(userKey){
+      const res = await fetchWithRetry(GEN + '/image/' + encodeURIComponent(prompt) + '?' + qs, {
+        headers: { 'Authorization': 'Bearer ' + userKey }
+      });
+      return URL.createObjectURL(await res.blob());
+    }
+    return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt)
+         + '?' + qs + '&referrer=' + APP_REFERRER;
+  }
+
+  async function addScene(i, paragraph, style){
+    const scene = document.createElement('div');
+    scene.className='scene';
+    const imgPrompt = `${paragraph}. ${style}. storybook scene, highly detailed`;
+    scene.innerHTML = `
+      <span class="num">Cena ${i+1}</span>
+      <div class="imgwrap">
+        <div class="loader">desenhando…</div>
+        <img alt="Ilustração da cena ${i+1}" />
+      </div>
+      <p>${paragraph}</p>`;
+    storyEl.appendChild(scene);
+    const img = scene.querySelector('img');
+    const loader = scene.querySelector('.loader');
+    try{
+      const src = await makeImageSrc(imgPrompt);
+      await new Promise(resolve=>{
+        img.onload = ()=>{ loader.style.display='none'; resolve(); };
+        img.onerror = ()=>{ loader.textContent='erro ao carregar a imagem'; resolve(); };
+        img.src = src;
+      });
+    }catch(err){
+      loader.textContent = 'erro ao gerar a imagem';
+    }
+  }
+
+  async function run(){
+    const idea = ideaEl.value.trim();
+    if(!idea){ statusEl.textContent='Escreva uma ideia primeiro.'; return; }
+    const scenes = parseInt(lenEl.value,10);
+    const style = styleEl.value;
+
+    goBtn.disabled = true;
+    toolbar.style.display='none';
+    storyEl.innerHTML='';
+    statusEl.textContent='Escrevendo a história…';
+
+    try{
+      const paragraphs = await getStory(idea, scenes);
+      for(let i=0;i<paragraphs.length;i++){
+        statusEl.textContent='Ilustrando as cenas… ('+(i+1)+'/'+paragraphs.length+')';
+        await addScene(i, paragraphs[i], style);
+      }
+      statusEl.textContent='Pronto.';
+      toolbar.style.display='flex';
+    }catch(err){
+      statusEl.textContent=err.message+' — tente de novo em alguns segundos.';
+    }finally{
+      goBtn.disabled=false;
+    }
+  }
+
+  goBtn.addEventListener('click', run);
+  document.getElementById('again').addEventListener('click', ()=>{window.scrollTo({top:0,behavior:'smooth'});ideaEl.focus();});
+  document.getElementById('print').addEventListener('click', ()=>window.print());
+</script>
+</body>
+</html>
